@@ -87,14 +87,14 @@
 				var curMousePos = raycaster.ray.origin;
 				if(!rotationMode)
 				{
-		      if(INTERSECTED)
+		      			if(INTERSECTED)
 					{
 						var vectorDiff = new THREE.Vector3(curMousePos.x+offset.x,curMousePos.y+offset.y,INTERSECTED.position.z);
 						INTERSECTED.position.copy(vectorDiff);
-		      }
+		      			}
 				}
 				else
-        {
+        			{
 					if(prevPointOverSphere)//checa se algum ponto encima da esfera ja foi obtido anteriormente
 					{
 						mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -120,7 +120,7 @@
 				}
 				animate();
 			}
-      function onDocumentMouseUp(event)
+      			function onDocumentMouseUp(event)
 			{
 				quaternion = new THREE.Quaternion();
 				prevPointOverSphere = null;
@@ -133,7 +133,8 @@
 					}
 				}
 			}
-			function onDocumentMouseDown( event ) {
+			function onDocumentMouseDown( event ) 
+			{
 				event.preventDefault();
 				raycaster.setFromCamera( mouse, camera );
 	 			intersects = raycaster.intersectObjects( scene.children );
@@ -166,14 +167,17 @@
 					}
 				}
 			}
-			function Wheel(event){
+			function Wheel(event)
+			{
 				let zoom = (camera.zoom / (2 ** (event.deltaY/60.0)));
-				if (zoom <= 1E+12 && zoom >= 1E-12){
+				if (zoom <= 1E+12 && zoom >= 1E-12)
+				{
 					camera.zoom = zoom;
 					camera.updateProjectionMatrix();
 				}
 			}
-			function onDocumentDoubleClick( event ) {
+			function onDocumentDoubleClick( event ) 
+			{
 				event.preventDefault();
 				rotationMode = !rotationMode;//inverte o tipo de operacao
 				prevPointOverSphere = null;
@@ -192,12 +196,12 @@
 				{
 		
 						if(INTERSECTED)//cria uma esfera para um objeto especifico
-            {
-							var radius = Math.sqrt(
-																		Math.pow(INTERSECTED.scale.x*10,2) + 
-																		Math.pow(INTERSECTED.scale.y*10,2) + 
-																		Math.pow(INTERSECTED.scale.z*10,2) 
-																		);
+            					{
+							var radius = Math.sqrt(	
+										Math.pow(INTERSECTED.scale.x*10,2) + 
+										Math.pow(INTERSECTED.scale.y*10,2) + 
+										Math.pow(INTERSECTED.scale.z*10,2) 
+										);
 		 					var geometry = new THREE.SphereGeometry(2*radius, 32, 32 );
 							var material = new THREE.MeshBasicMaterial( {color: 0x0000ff} );
 							material.transparent = true;
@@ -234,25 +238,25 @@
 							sphere.position.y = center.y;
 							sphere.position.z = center.z;
 							for(let i = 0;i<objects.length;i++)
-						  {
+						  	{
 							 objects[i].position.sub(sphere.position);
 							 sphere.add(objects[i]);
-						  }
+						  	}
 						}
 						scene.add( sphere );
-		    }
+		    		}
 				else//estou no modo de translacao
-        {
+        			{
 					if(scene.getObjectByName("SPHERE"))
-    		  {
-					 for(let i = 0;i<sphere.children.length;i++)
-					 {
-						sphere.children[i].applyMatrix( sphere.matrixWorld );
-						scene.add(sphere.children[i]);
-					 }
-					 scene.remove(scene.getObjectByName("SPHERE"));
-          }
-        }
+    		  			{
+						for(let i = 0;i<sphere.children.length;i++)
+					 	{
+							sphere.children[i].applyMatrix( sphere.matrixWorld );
+							scene.add(sphere.children[i]);
+					 	}
+						 scene.remove(scene.getObjectByName("SPHERE"));
+          				}
+        			}
 				render();
 			}
 			function animate() {
@@ -266,7 +270,7 @@
 				camera.position.y = radius * Math.sin( THREE.Math.degToRad( theta ) );
 				camera.position.z = radius * Math.cos( THREE.Math.degToRad( theta ) );
 				//camera.lookAt( scene.position );
-        camera.lookAt( lookAtVector);
+        			camera.lookAt( lookAtVector);
 				camera.updateMatrixWorld();
 				renderer.render( scene, camera );
 			}
