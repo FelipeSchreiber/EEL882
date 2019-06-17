@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	</head>
+	<body>
+		<script src="three.js"></script>
+
+		<script src="stats.min.js"></script>
+
+		<script>
+			var rotationMode = 0;
+		  var lookAtVector= new THREE.Vector3(0,0,1);
+			var offset = new THREE.Vector3();			
+			var quaternion = new THREE.Quaternion();
+			var intersectionPos = new THREE.Vector3();
+			var centerToPoint1 = new THREE.Vector3();
+			var centerToPoint2 = new THREE.Vector3();
+			var intersects = [];
+			var objects = [], plane;
+			var prevPointOverSphere = new THREE.Vector3();
+			var curMousePos,pointOverSphere;
+			var container, stats;
+			var sphere;
+			var camera, scene, raycaster, renderer;
+			raycaster = new THREE.Raycaster();
+			var mouse = new THREE.Vector2(), INTERSECTED;
+			var radius = 500, theta = 0;
+			var frustumSize = 1000;
+			init();
+			animate();
+			function init() {
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+				var aspect = window.innerWidth / window.innerHeight;
+				camera = new THREE.OrthographicCamera( frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 1000 );
+        console.log("CAMERA: ",camera.position);
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xf0f0f0 );
+				var light = new THREE.DirectionalLight( 0xffffff, 1 );
+				light.position.set( 1, 1, 1 ).normalize();
+				scene.add( light );
+				var geometry = new THREE.BoxBufferGeometry( 20, 20, 20 );
+				for ( var i = 0; i < 5; i ++ ) {
+					var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: Math.random() * 0xffffff } ) );
+					object.position.x = 200 - 30*i;
+					object.position.y = -170 + 5*i;
+					object.position.z = -100;
+					object.rotation.x = ( Math.random() * 360 ) * Math.PI / 180;
+					object.rotation.y = ( Math.random() * 360 ) * Math.PI / 180;
+					object.rotation.z = ( Math.random() * 360 ) * Math.PI / 180;
+					object.scale.x = Math.random() * 2 + 1;
+					object.scale.y = Math.random() * 2 + 1;
+					object.scale.z = Math.random() * 2 + 1;
+					object.frustumCulled = false;
+					objects.push(object);
+					scene.add( object );
+				}
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				stats = new Stats();
+				container.appendChild( stats.domElement );
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'dblclick', onDocumentDoubleClick, false );
+				document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+				document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+				document.addEventListener( 'wheel', Wheel, false);
+				window.addEventListener( 'resize', onWindowResize, false );
+			}
+			function onWindowResize() {
+				var aspect = window.innerWidth / window.innerHeight;
+				camera.left = - frustumSize * aspect / 2;
+				camera.right = frustumSize * aspect / 2;
+				camera.top = frustumSize / 2;
+				camera.bottom = - frustumSize / 2;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+			function onDocumentMouseMove( event ) {
+				event.preventDefault();
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+				raycaster.setFromCamera( mouse, camera );
+				var curMousePos = raycaster.ray.origin;
+				if(!rotationMode)
+				{
+		      if(INTERSECTED)
+					{
+						var vectorDiff = new THREE.Vector3(curMousePos.x+offset.x,curMousePos.y+offset.y,INTERSECTED.position.z);
+						INTERSECTED.position.copy(vectorDiff);
+		      }
+				}
+				else
+        {
+					if(prevPointOverSphere)//checa se algum ponto encima da esfera ja foi obtido anteriormente
+					{
+						mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+						mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+						raycaster.setFromCamera( mouse, camera );
+						var sphereCaptured = raycaster.intersectObject( scene.getObjectByName("SPHERE") )[0];
+						if(sphereCaptured == null)
+						{
+							var point = new THREE.Vector3(curMousePos.x,curMousePos.y,sphere.position.z);
+							var direction = new THREE.Vector3();
+							direction.subVectors(sphere.position,point);
+							raycaster.set(point,direction.normalize());	
+							sphereCaptured = raycaster.intersectObject( scene.getObjectByName("SPHERE") )[0];
+						}
+						pointOverSphere = sphereCaptured.point;
+						centerToPoint1.subVectors(prevPointOverSphere,sphereCaptured.object.position);
+						centerToPoint2.subVectors(pointOverSphere,sphereCaptured.object.position);
+						quaternion.setFromUnitVectors(centerToPoint1.normalize(),centerToPoint2.normalize() );
+						quaternion.normalize();
+						sphere.quaternion.premultiply(quaternion);
+						prevPointOverSphere.copy(pointOverSphere);		
+					}
+				}
+				animate();
+			}
+      function onDocumentMouseUp(event)
+			{
+				quaternion = new THREE.Quaternion();
+				prevPointOverSphere = null;
+				if(INTERSECTED)
+				{
+					if(!rotationMode)
+					{
+						INTERSECTED = null;
+				 		intersects = null;
+					}
+				}
+			}
+			function onDocumentMouseDown( event ) {
+				event.preventDefault();
+				raycaster.setFromCamera( mouse, camera );
+	 			intersects = raycaster.intersectObjects( scene.children );
+				if(!rotationMode)
+				{
+					if ( intersects.length > 0 ) {
+						if ( INTERSECTED != intersects[ 0 ].object ) {
+							INTERSECTED = intersects[ 0 ].object;
+							intersectionPos.copy(intersects[ 0 ].point);
+							offset.subVectors (INTERSECTED.position,intersectionPos); 
+						}
+					} 
+					else 
+					{
+						INTERSECTED = null;
+						intersects = null;
+					}
+				}
+				else
+				{	
+				 	prevPointOverSphere = new THREE.Vector3();
+					prevPointOverSphere.copy(raycaster.intersectObject( scene.getObjectByName("SPHERE") )[0].point);
+					if(prevPointOverSphere == null)
+					{
+							var point = new THREE.Vector3(raycaster.ray.position.x,raycaster.ray.position.y,sphere.position.z);
+							var direction = new THREE.Vector3();
+							direction.subVectors(sphere.position,point);
+							raycaster.set(point,direction.normalize());	
+							sphereCaptured = raycaster.intersectObject( scene.getObjectByName("SPHERE") )[0];
+					}
+				}
+			}
+			function Wheel(event){
+				let zoom = (camera.zoom / (2 ** (event.deltaY/60.0)));
+				if (zoom <= 1E+12 && zoom >= 1E-12){
+					camera.zoom = zoom;
+					camera.updateProjectionMatrix();
+				}
+			}
+			function onDocumentDoubleClick( event ) {
+				event.preventDefault();
+				rotationMode = !rotationMode;//inverte o tipo de operacao
+				prevPointOverSphere = null;
+				INTERSECTED = null;
+				intersects = null;
+				raycaster.setFromCamera( mouse, camera );
+	 			intersects = raycaster.intersectObjects( scene.children );
+				if ( intersects.length > 0 ) 
+				{
+						if ( INTERSECTED != intersects[ 0 ].object )
+						{
+							INTERSECTED = intersects[ 0 ].object;
+ 						}
+				}
+				if(rotationMode)
+				{
+		
+						if(INTERSECTED)//cria uma esfera para um objeto especifico
+            {
+							var radius = Math.sqrt(
+																		Math.pow(INTERSECTED.scale.x*10,2) + 
+																		Math.pow(INTERSECTED.scale.y*10,2) + 
+																		Math.pow(INTERSECTED.scale.z*10,2) 
+																		);
+		 					var geometry = new THREE.SphereGeometry(2*radius, 32, 32 );
+							var material = new THREE.MeshBasicMaterial( {color: 0x0000ff} );
+							material.transparent = true;
+							material.opacity = 0.2;
+							sphere = new THREE.Mesh( geometry, material );
+							sphere.name ="SPHERE";
+							sphere.position.x = INTERSECTED.position.x;
+							sphere.position.y = INTERSECTED.position.y;
+							sphere.position.z = INTERSECTED.position.z;
+							INTERSECTED.position.sub(sphere.position);
+							sphere.add(INTERSECTED);
+						}	
+						else//cria uma esfera para a cena toda
+						{
+							var center = new THREE.Vector3();
+							for(let i = 0; i<objects.length;i++)
+							{
+								center.x += objects[i].position.x;
+								center.y += objects[i].position.y;
+								center.z += objects[i].position.z;
+							}
+							center.x /= objects.length;
+							center.y /= objects.length;
+							center.z /= objects.length;
+							objects.sort((a, b) => b.position.distanceToSquared(center) - a.position.distanceToSquared(center) );//ordena os objetos da maior distancia para a menor em relacao ao centro da esfera
+							var radius = objects[0].position.distanceTo(center) + 60;
+							var geometry = new THREE.SphereGeometry(radius, 32, 32 );
+							var material = new THREE.MeshBasicMaterial( {color: 0x0000ff} );
+							material.transparent = true;
+							material.opacity = 0.2;
+							sphere = new THREE.Mesh( geometry, material );
+							sphere.name ="SPHERE";
+							sphere.position.x = center.x;
+							sphere.position.y = center.y;
+							sphere.position.z = center.z;
+							for(let i = 0;i<objects.length;i++)
+						  {
+							 objects[i].position.sub(sphere.position);
+							 sphere.add(objects[i]);
+						  }
+						}
+						scene.add( sphere );
+		    }
+				else//estou no modo de translacao
+        {
+					if(scene.getObjectByName("SPHERE"))
+    		  {
+					 for(let i = 0;i<sphere.children.length;i++)
+					 {
+						sphere.children[i].applyMatrix( sphere.matrixWorld );
+						scene.add(sphere.children[i]);
+					 }
+					 scene.remove(scene.getObjectByName("SPHERE"));
+          }
+        }
+				render();
+			}
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+				stats.update();
+			}
+			function render() {
+				theta += 0.0;
+				camera.position.x = radius * Math.sin( THREE.Math.degToRad( theta ) );
+				camera.position.y = radius * Math.sin( THREE.Math.degToRad( theta ) );
+				camera.position.z = radius * Math.cos( THREE.Math.degToRad( theta ) );
+				//camera.lookAt( scene.position );
+        camera.lookAt( lookAtVector);
+				camera.updateMatrixWorld();
+				renderer.render( scene, camera );
+			}
+		</script>
+
+	</body>
+</html>
